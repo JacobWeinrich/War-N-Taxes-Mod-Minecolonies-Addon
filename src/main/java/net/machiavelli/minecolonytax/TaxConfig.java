@@ -12,7 +12,19 @@ public class TaxConfig {
 
         public static ModConfigSpec CONFIG;
 
+        public enum EconomyProvider {
+                AUTO("auto"),
+                ECONOMY_PLUS("economyplus"),
+                SDM_SHOP("sdmshop"),
+                ITEM("item");
+
+                private final String id;
+                EconomyProvider(String id) { this.id = id; }
+                public String getId() { return id; }
+        }
+
         public static final ModConfigSpec.BooleanValue ENABLE_SDM_SHOP_CONVERSION;
+        public static final ModConfigSpec.EnumValue<EconomyProvider> ECONOMY_PROVIDER;
         public static final ModConfigSpec.ConfigValue<String> SDM_CURRENCY_NAME;
         public static final ModConfigSpec.ConfigValue<String> CURRENCY_ITEM_NAME;
         public static final ModConfigSpec.IntValue DEBT_LIMIT;
@@ -479,8 +491,16 @@ public class TaxConfig {
                                 .defineInRange("MaxTaxRevenue", 10000, 1, Integer.MAX_VALUE);
 
                 ENABLE_SDM_SHOP_CONVERSION = BUILDER
-                                .comment("Enable SDMShop conversion (true = enable, false = disable).")
+                                .comment("Enable digital currency conversion (true = enable, false = disable item fallback). Legacy option.")
                                 .define("EnableSDMShopConversion", true);
+
+                ECONOMY_PROVIDER = BUILDER
+                                .comment("Select Economy Provider for digital currency:\n"
+                                                + "  AUTO: Auto-detect EconomyPlus (jakeseconomyplus) or SDMShop (sdmshop)\n"
+                                                + "  ECONOMY_PLUS: Use EconomyPlus\n"
+                                                + "  SDM_SHOP: Use SDMShop\n"
+                                                + "  ITEM: Use physical Minecraft item currency (see CurrencyItemName)")
+                                .defineEnum("EconomyProvider", EconomyProvider.AUTO);
 
                 SDM_CURRENCY_NAME = BUILDER
                                 .comment("SDM-Economy currency id that claimed taxes are paid into. Must match a "
@@ -2554,8 +2574,22 @@ public class TaxConfig {
                 CONFIG = BUILDER.build();
         }
 
+        public static EconomyProvider getEconomyProvider() {
+                if (ECONOMY_PROVIDER != null) {
+                        EconomyProvider provider = ECONOMY_PROVIDER.get();
+                        if (provider != null) return provider;
+                }
+                if (ENABLE_SDM_SHOP_CONVERSION != null && !ENABLE_SDM_SHOP_CONVERSION.get()) {
+                        return EconomyProvider.ITEM;
+                }
+                return EconomyProvider.AUTO;
+        }
+
         public static boolean isSDMShopConversionEnabled() {
-                return ENABLE_SDM_SHOP_CONVERSION.get();
+                if (ENABLE_SDM_SHOP_CONVERSION != null && !ENABLE_SDM_SHOP_CONVERSION.get()) {
+                        return false;
+                }
+                return getEconomyProvider() != EconomyProvider.ITEM && net.machiavelli.minecolonytax.integration.EconomyIntegration.isAvailable();
         }
 
         public static String getSDMCurrencyName() {

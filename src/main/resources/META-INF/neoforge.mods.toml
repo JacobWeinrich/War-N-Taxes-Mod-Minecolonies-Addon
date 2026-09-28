@@ -87,6 +87,13 @@ authors="${mod_authors}"
     side="BOTH"
 
 [[dependencies.${mod_id}]]
+    modId="jakeseconomyplus"
+    type="optional"
+    versionRange="[1.0.0,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
     modId="ftbteams"
     type="optional"
     versionRange="[2101.1.0,)"

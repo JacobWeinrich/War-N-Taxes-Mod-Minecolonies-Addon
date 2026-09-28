@@ -12,7 +12,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
-import net.machiavelli.minecolonytax.integration.SDMShopCompat;
+import net.machiavelli.minecolonytax.integration.EconomyIntegration;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import java.util.ArrayList;
@@ -105,10 +105,10 @@ public class WarEconomyHandler {
             if (loserPlayer != null) {
                 long deducted;
                 if (TaxConfig.isSDMShopConversionEnabled()) {
-                    long balance = SDMShopCompat.getMoney(loserPlayer);
+                    long balance = EconomyIntegration.getMoney(loserPlayer);
                     deducted = (long) (balance * fraction);
                     // Count the penalty only when the wallet debit actually happened.
-                    if (deducted > 0 && !SDMShopCompat.setMoney(loserPlayer, balance - deducted)) {
+                    if (deducted > 0 && !EconomyIntegration.setMoney(loserPlayer, balance - deducted)) {
                         LOGGER.error("Failed to deduct {} penalty coins from {} via SDMShop",
                                 deducted, loserPlayer.getName().getString());
                         deducted = 0;
@@ -157,9 +157,9 @@ public class WarEconomyHandler {
                 ServerPlayer loserPlayer = ServerLifecycleHooks.getCurrentServer()
                         .getPlayerList().getPlayer(loserUUID);
                 if (loserPlayer != null) {
-                    long balance = SDMShopCompat.getMoney(loserPlayer);
+                    long balance = EconomyIntegration.getMoney(loserPlayer);
                     long lostAmount = (long) (balance * fraction);
-                    if (lostAmount <= 0 || !SDMShopCompat.setMoney(loserPlayer, balance - lostAmount)) {
+                    if (lostAmount <= 0 || !EconomyIntegration.setMoney(loserPlayer, balance - lostAmount)) {
                         continue; // nothing moved for this player
                     }
                     debits.put(loserPlayer, lostAmount);
@@ -172,16 +172,16 @@ public class WarEconomyHandler {
                 }
             }
             if (winnerPlayer != null && totalTransferred > 0) {
-                long winnerBalance = SDMShopCompat.getMoney(winnerPlayer);
-                if (SDMShopCompat.setMoney(winnerPlayer, winnerBalance + totalTransferred)) {
+                long winnerBalance = EconomyIntegration.getMoney(winnerPlayer);
+                if (EconomyIntegration.setMoney(winnerPlayer, winnerBalance + totalTransferred)) {
                     winnerPlayer.sendSystemMessage(
                             Component.literal("You received " + totalTransferred + " coins in war reparations!")
                                     .withStyle(ChatFormatting.GREEN));
                 } else {
                     // Wallet credit failed: roll every debit back so nothing is destroyed.
                     for (java.util.Map.Entry<ServerPlayer, Long> d : debits.entrySet()) {
-                        SDMShopCompat.setMoney(d.getKey(),
-                                SDMShopCompat.getMoney(d.getKey()) + d.getValue());
+                        EconomyIntegration.setMoney(d.getKey(),
+                                EconomyIntegration.getMoney(d.getKey()) + d.getValue());
                     }
                     LOGGER.error("War reparations credit failed; refunded {} coins to {} player(s).",
                             totalTransferred, debits.size());
@@ -275,7 +275,7 @@ public class WarEconomyHandler {
             for (UUID member : resolveTeamMembers(teamID)) {
                 ServerPlayer player = ServerLifecycleHooks.getCurrentServer().getPlayerList().getPlayer(member);
                 if (player != null) {
-                    sum += SDMShopCompat.getMoney(player);
+                    sum += EconomyIntegration.getMoney(player);
                 }
             }
         } else {
@@ -314,9 +314,9 @@ public class WarEconomyHandler {
                 ServerPlayer loser = ServerLifecycleHooks.getCurrentServer()
                         .getPlayerList().getPlayer(member);
                 if (loser != null) {
-                    long balance = SDMShopCompat.getMoney(loser);
+                    long balance = EconomyIntegration.getMoney(loser);
                     long take = (long) (balance * ((double) demandedAmount / teamTotalAtStart));
-                    if (take <= 0 || !SDMShopCompat.setMoney(loser, balance - take)) {
+                    if (take <= 0 || !EconomyIntegration.setMoney(loser, balance - take)) {
                         continue; // nothing moved for this player
                     }
                     repDebits.put(loser, take);
@@ -326,12 +326,12 @@ public class WarEconomyHandler {
                 }
             }
             if (winner != null && totalTransferred > 0) {
-                long wb = SDMShopCompat.getMoney(winner);
-                if (!SDMShopCompat.setMoney(winner, wb + totalTransferred)) {
+                long wb = EconomyIntegration.getMoney(winner);
+                if (!EconomyIntegration.setMoney(winner, wb + totalTransferred)) {
                     // Wallet credit failed: roll every debit back and fail the deal.
                     for (java.util.Map.Entry<ServerPlayer, Long> d : repDebits.entrySet()) {
-                        SDMShopCompat.setMoney(d.getKey(),
-                                SDMShopCompat.getMoney(d.getKey()) + d.getValue());
+                        EconomyIntegration.setMoney(d.getKey(),
+                                EconomyIntegration.getMoney(d.getKey()) + d.getValue());
                     }
                     LOGGER.error("Reparations credit failed; refunded {} coins to {} player(s).",
                             totalTransferred, repDebits.size());
@@ -436,21 +436,21 @@ public class WarEconomyHandler {
         if (loserPlayer != null && winnerPlayer != null) {
             if (TaxConfig.isSDMShopConversionEnabled()) {
                 // Use SDMShop economy
-                long loserBalance = SDMShopCompat.getMoney(loserPlayer);
+                long loserBalance = EconomyIntegration.getMoney(loserPlayer);
                 long transferAmount = (long)(loserBalance * percentage);
                 
                 if (transferAmount > 0) {
                     // Remove from loser
                     // Debit and credit as a checked pair; roll the debit back if the
                     // credit fails so the coins are never destroyed.
-                    if (!SDMShopCompat.setMoney(loserPlayer, loserBalance - transferAmount)) {
+                    if (!EconomyIntegration.setMoney(loserPlayer, loserBalance - transferAmount)) {
                         return 0;
                     }
                     
                     // Add to winner
-                    long winnerBalance = SDMShopCompat.getMoney(winnerPlayer);
-                    if (!SDMShopCompat.setMoney(winnerPlayer, winnerBalance + transferAmount)) {
-                        SDMShopCompat.setMoney(loserPlayer, loserBalance); // roll back
+                    long winnerBalance = EconomyIntegration.getMoney(winnerPlayer);
+                    if (!EconomyIntegration.setMoney(winnerPlayer, winnerBalance + transferAmount)) {
+                        EconomyIntegration.setMoney(loserPlayer, loserBalance); // roll back
                         LOGGER.error("transferBalanceToPlayer: credit to {} failed - debit rolled back",
                                 winnerPlayer.getName().getString());
                         return 0;

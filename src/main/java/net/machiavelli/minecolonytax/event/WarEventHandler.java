@@ -317,7 +317,15 @@ public class WarEventHandler {
     @SubscribeEvent
     public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        
+
+        // Warn if digital currency is configured but neither EconomyPlus nor SDMShop is available
+        if (TaxConfig.getEconomyProvider() != TaxConfig.EconomyProvider.ITEM && !net.machiavelli.minecolonytax.integration.EconomyIntegration.isAvailable()) {
+            player.sendSystemMessage(Component.literal("§c[War-N-Taxes Error] Digital currency is enabled, but neither SDMShop nor EconomyPlus is installed!")
+                    .withStyle(ChatFormatting.RED));
+            player.sendSystemMessage(Component.literal("§ePlease install SDMShop or EconomyPlus (or set EconomyProvider to ITEM in config) to use currency features.")
+                    .withStyle(ChatFormatting.YELLOW));
+        }
+
         UUID playerUUID = player.getUUID();
         
         // Check if this player was in an active war when they disconnected

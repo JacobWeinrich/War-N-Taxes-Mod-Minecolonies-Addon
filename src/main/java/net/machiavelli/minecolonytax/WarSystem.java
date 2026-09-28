@@ -806,20 +806,20 @@ public class WarSystem {
 
             // --- Losing player's wallet grab ---
             int walletPct = TaxConfig.getWarVassalizationPlayerBalanceGrabPercent();
-            if (walletPct > 0 && net.machiavelli.minecolonytax.integration.SDMShopCompat.isAvailable()) {
+            if (walletPct > 0 && net.machiavelli.minecolonytax.integration.EconomyIntegration.isAvailable()) {
                 UUID loserOwner = loserColony.getPermissions().getOwner();
                 ServerPlayer loserPlayer = loserOwner != null ? server.getPlayerList().getPlayer(loserOwner) : null;
                 if (loserPlayer != null) {
-                    long bal = net.machiavelli.minecolonytax.integration.SDMShopCompat.getMoney(loserPlayer);
+                    long bal = net.machiavelli.minecolonytax.integration.EconomyIntegration.getMoney(loserPlayer);
                     if (bal > 0) {
                         long taken = (long) Math.floor(bal * (walletPct / 100.0));
                         if (taken > 0
-                                && net.machiavelli.minecolonytax.integration.SDMShopCompat.removeMoney(loserPlayer, taken)) {
+                                && net.machiavelli.minecolonytax.integration.EconomyIntegration.removeMoney(loserPlayer, taken)) {
                             UUID winnerUUID = war.getAttacker();
                             ServerPlayer winnerPlayer = winnerUUID != null
                                     ? server.getPlayerList().getPlayer(winnerUUID) : null;
                             if (winnerPlayer != null) {
-                                net.machiavelli.minecolonytax.integration.SDMShopCompat.addMoney(winnerPlayer, taken);
+                                net.machiavelli.minecolonytax.integration.EconomyIntegration.addMoney(winnerPlayer, taken);
                             }
                             loserPlayer.sendSystemMessage(Component.literal("War tribute: " + taken
                                     + " coins seized from your wallet as the price of defeat.")

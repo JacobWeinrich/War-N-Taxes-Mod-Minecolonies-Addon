@@ -77,7 +77,7 @@ public final class SDMShopCompat {
                     "SDM-Economy detected (sdmeconomy 2.x API) - economy integration enabled, paying currency '{}'",
                     currencyId());
         } catch (ClassNotFoundException e) {
-            MineColonyTax.LOGGER.info("SDM-Economy not installed - currency integration disabled (using fallback)");
+            MineColonyTax.LOGGER.debug("SDM-Economy not installed");
         } catch (Throwable t) {
             // Present but the API differs from what we expect (e.g. a future package rename).
             MineColonyTax.LOGGER.warn("SDM-Economy present but its API did not match - integration disabled: {}",

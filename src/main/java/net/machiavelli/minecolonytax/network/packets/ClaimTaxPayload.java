@@ -86,19 +86,19 @@ public record ClaimTaxPayload(int colonyId, int amount) implements CustomPacketP
                 boolean paymentSuccessful = false;
 
                 if (TaxConfig.isSDMShopConversionEnabled()) {
-                    if (SDMShopIntegration.isAvailable()) {
-                        long currentBalance = SDMShopIntegration.getMoney(player);
-                        paymentSuccessful = SDMShopIntegration.addMoney(player, claimedAmount);
+                    if (net.machiavelli.minecolonytax.integration.EconomyIntegration.isAvailable()) {
+                        long currentBalance = net.machiavelli.minecolonytax.integration.EconomyIntegration.getMoney(player);
+                        paymentSuccessful = net.machiavelli.minecolonytax.integration.EconomyIntegration.addMoney(player, claimedAmount);
                         if (paymentSuccessful) {
-                            long newBalance = SDMShopIntegration.getMoney(player);
-                            player.sendSystemMessage(Component.literal("\u00a7a\u2713 Successfully added " + claimedAmount + " to your balance!"));
+                            long newBalance = net.machiavelli.minecolonytax.integration.EconomyIntegration.getMoney(player);
+                            player.sendSystemMessage(Component.literal("\u00a7a\u2713 Successfully added " + claimedAmount + " to your " + net.machiavelli.minecolonytax.integration.EconomyIntegration.getActiveProviderName() + " balance!"));
                             player.sendSystemMessage(Component.literal("\u00a7a  Balance: " + currentBalance + " \u2192 " + newBalance));
                         } else {
-                            player.sendSystemMessage(Component.literal("\u00a7c\u2717 Failed to add money to SDMShop balance!"));
+                            player.sendSystemMessage(Component.literal("\u00a7c\u2717 Failed to add money to " + net.machiavelli.minecolonytax.integration.EconomyIntegration.getActiveProviderName() + " balance!"));
                         }
                     } else {
-                        player.sendSystemMessage(Component.literal("\u00a7c\u2717 SDMShop integration is not available!"));
-                        player.sendSystemMessage(Component.literal("\u00a7eCheck that SDMShop mod is installed and working"));
+                        player.sendSystemMessage(Component.literal("\u00a7c\u2717 Neither SDMShop nor EconomyPlus is installed!"));
+                        player.sendSystemMessage(Component.literal("\u00a7ePlease install SDMShop or EconomyPlus to use digital currency features."));
                     }
                 } else {
                     ResourceLocation itemId = ResourceLocation.tryParse(TaxConfig.getCurrencyItemName());

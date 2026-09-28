@@ -26,7 +26,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import net.machiavelli.minecolonytax.integration.SDMShopCompat; // Import the SDMShop API
+import net.machiavelli.minecolonytax.integration.EconomyIntegration; // Central economy router
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -138,17 +138,12 @@ public class ClaimTaxCommand {
                     player.sendSystemMessage(Component.translatable("command.claimtax.success", 
                         colony.getName(), totalClaimed));
 
-                    // Update player's funds using SDMShop API if enabled
+                    // Update player's funds using EconomyIntegration API if enabled
                     if (TaxConfig.isSDMShopConversionEnabled()) {
-                        // Atomic addMoney, NOT getMoney+setMoney: the read-modify-write OVERWROTE the
-                        // player's whole balance whenever getMoney fell back to 0 on an SDM error. Also
-                        // CHECK the result — claimTax already deducted+persisted the tax, so if the SDM
-                        // credit fails (economy mod absent/unavailable), refund it rather than silently
-                        // eating the player's money while still printing "success".
-                        if (!SDMShopCompat.addMoney(player, totalClaimed)) {
+                        if (!EconomyIntegration.addMoney(player, totalClaimed)) {
                             TaxManager.refundClaimedTax(colony, totalClaimed);
                             player.sendSystemMessage(net.minecraft.network.chat.Component.literal(
-                                    "⚠ Payout failed: the SDM economy is unavailable. The tax was returned to "
+                                    "⚠ Payout failed: the economy provider (" + EconomyIntegration.getActiveProviderName() + ") is unavailable. The tax was returned to "
                                     + colony.getName() + " and NOT paid out.").withStyle(net.minecraft.ChatFormatting.RED));
                         }
                     } else {

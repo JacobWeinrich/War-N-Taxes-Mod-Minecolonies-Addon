@@ -23,7 +23,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.machiavelli.minecolonytax.integration.SDMShopCompat;
+import net.machiavelli.minecolonytax.integration.EconomyIntegration;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -103,17 +103,17 @@ public class TaxDebtCommand {
     }
 
     /**
-     * Deducts currency from the player using SDMEconomy if enabled, or from the player's inventory otherwise.
+     * Deducts currency from the player using digital economy if enabled, or from the player's inventory otherwise.
      */
     private static boolean deductCurrency(ServerPlayer player, int amount) {
         if (TaxConfig.isSDMShopConversionEnabled()) {
-            long balance = SDMShopCompat.getMoney(player);
+            long balance = EconomyIntegration.getMoney(player);
             if (balance < amount) {
                 return false;
             }
             // Only report success when the debit actually happened — a false return here
             // would otherwise still pay down the colony debt with coins never taken.
-            return SDMShopCompat.setMoney(player, balance - amount);
+            return EconomyIntegration.setMoney(player, balance - amount);
         } else {
             return deductCurrencyFromInventory(player, amount);
         }

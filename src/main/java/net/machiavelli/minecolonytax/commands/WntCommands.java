@@ -1697,17 +1697,12 @@ public class WntCommands {
                 if (claimedAmount > 0) {
                     player.sendSystemMessage(Component.translatable("command.claimtax.success", claimedAmount, colony.getName()));
 
-                    // Update player's funds using SDMShop API if enabled
+                    // Update player's funds using EconomyIntegration API if enabled
                     if (TaxConfig.isSDMShopConversionEnabled()) {
-                        // Atomic addMoney, NOT getMoney+setMoney: the read-modify-write OVERWROTE the
-                        // player's whole balance whenever getMoney fell back to 0 on an SDM error. Also
-                        // CHECK the result — claimTax already deducted+persisted the tax, so if the SDM
-                        // credit fails (economy mod absent/unavailable), refund it rather than silently
-                        // eating the player's money while still printing "success".
-                        if (!net.machiavelli.minecolonytax.integration.SDMShopCompat.addMoney(player, claimedAmount)) {
+                        if (!net.machiavelli.minecolonytax.integration.EconomyIntegration.addMoney(player, claimedAmount)) {
                             net.machiavelli.minecolonytax.TaxManager.refundClaimedTax(colony, claimedAmount);
                             player.sendSystemMessage(Component.literal(
-                                    "⚠ Payout failed: the SDM economy is unavailable. The tax was returned to "
+                                    "⚠ Payout failed: the economy provider (" + net.machiavelli.minecolonytax.integration.EconomyIntegration.getActiveProviderName() + ") is unavailable. The tax was returned to "
                                     + colony.getName() + " and NOT paid out.").withStyle(net.minecraft.ChatFormatting.RED));
                         }
                     } else {
@@ -1859,12 +1854,12 @@ public class WntCommands {
     
     private static boolean deductCurrency(ServerPlayer player, int amount) {
         if (TaxConfig.isSDMShopConversionEnabled()) {
-            long balance = net.machiavelli.minecolonytax.integration.SDMShopCompat.getMoney(player);
+            long balance = net.machiavelli.minecolonytax.integration.EconomyIntegration.getMoney(player);
             if (balance < amount) {
                 return false;
             }
             // Only report success when the debit actually happened.
-            return net.machiavelli.minecolonytax.integration.SDMShopCompat.setMoney(player, balance - amount);
+            return net.machiavelli.minecolonytax.integration.EconomyIntegration.setMoney(player, balance - amount);
         } else {
             return deductCurrencyFromInventory(player, amount);
         }
@@ -2246,9 +2241,9 @@ public class WntCommands {
             return 0;
         }
 
-        // Determine available funds: prefer SDMShop wallet, fallback to colony tax
-        boolean sdmAvailable = SDMShopIntegration.isAvailable();
-        long playerBalance = sdmAvailable ? SDMShopIntegration.getMoney(player) : 0L;
+        // Determine available funds: prefer digital economy wallet, fallback to colony tax
+        boolean econAvailable = net.machiavelli.minecolonytax.integration.EconomyIntegration.isAvailable();
+        long playerBalance = econAvailable ? net.machiavelli.minecolonytax.integration.EconomyIntegration.getMoney(player) : 0L;
         int colonyBalance = TaxManager.getStoredTaxForColony(targetColony);
         long baseBalance = (playerBalance > 0) ? playerBalance : colonyBalance;
 
@@ -2277,7 +2272,7 @@ public class WntCommands {
         }
 
         // Ensure total available funds can cover the amount
-        if (sdmAvailable) {
+        if (econAvailable) {
             if ((playerBalance + colonyBalance) < extortionAmount) {
                 ctx.getSource().sendFailure(Component.literal("Insufficient funds to pay extortion! Needed: " + extortionAmount + ", Available: " + (playerBalance + colonyBalance))
                         .withStyle(ChatFormatting.RED));
@@ -2291,14 +2286,14 @@ public class WntCommands {
             }
         }
 
-        // Process the payment with SDMShop-first, then colony fallback
+        // Process the payment with wallet-first, then colony fallback
         long takenFromPlayer = 0L;
         int takenFromColony = 0;
 
-        if (sdmAvailable && playerBalance > 0) {
+        if (econAvailable && playerBalance > 0) {
             takenFromPlayer = Math.min(playerBalance, extortionAmount);
-            if (takenFromPlayer > 0 && !SDMShopIntegration.removeMoney(player, takenFromPlayer)) {
-                ctx.getSource().sendFailure(Component.literal("Failed to deduct from your SDMShop balance!").withStyle(ChatFormatting.RED));
+            if (takenFromPlayer > 0 && !net.machiavelli.minecolonytax.integration.EconomyIntegration.removeMoney(player, takenFromPlayer)) {
+                ctx.getSource().sendFailure(Component.literal("Failed to deduct from your balance!").withStyle(ChatFormatting.RED));
                 return 0;
             }
         }
@@ -2315,7 +2310,7 @@ public class WntCommands {
 
         // Credit the attacker accordingly
         if (takenFromPlayer > 0) {
-            SDMShopIntegration.addMoney(attacker, takenFromPlayer);
+            net.machiavelli.minecolonytax.integration.EconomyIntegration.addMoney(attacker, takenFromPlayer);
         }
         if (takenFromColony > 0) {
             IColony attackerColony = IColonyManager.getInstance().getColonies(attacker.level()).stream()
@@ -2323,9 +2318,9 @@ public class WntCommands {
                     .findFirst().orElse(null);
             if (attackerColony != null) {
                 TaxManager.adjustTax(attackerColony, takenFromColony);
-            } else if (sdmAvailable) {
-                // Fallback: if attacker has no colony, deposit to their wallet when SDMShop is available
-                SDMShopIntegration.addMoney(attacker, takenFromColony);
+            } else if (econAvailable) {
+                // Fallback: if attacker has no colony, deposit to their wallet when digital economy is available
+                net.machiavelli.minecolonytax.integration.EconomyIntegration.addMoney(attacker, takenFromColony);
             }
         }
 
